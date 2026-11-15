@@ -105,21 +105,19 @@ export async function POST(req: NextRequest) {
             },
           });
 
-          // Stock deductions
-          for (const itm of s.items) {
-            await tx.stockLedger.create({
-              data: {
-                productId: itm.productId,
-                quantityDelta: -Number(itm.quantity),
-                type: StockMovementType.SALE,
-                referenceId: createdSale.id,
-                costPaisa: Math.round(Number(itm.unitPricePaisa) * 0.8),
-                reason: `Offline Synced Sale ${s.receiptNumber}`,
-                createdAt: new Date(s.createdAt),
-                createdById: resolvedCashierId,
-              },
-            });
-          }
+          // Stock deductions batch
+          await tx.stockLedger.createMany({
+            data: s.items.map((itm: any) => ({
+              productId: itm.productId,
+              quantityDelta: -Number(itm.quantity),
+              type: StockMovementType.SALE,
+              referenceId: createdSale.id,
+              costPaisa: Math.round(Number(itm.unitPricePaisa) * 0.8),
+              reason: `Offline Synced Sale ${s.receiptNumber}`,
+              createdAt: new Date(s.createdAt),
+              createdById: resolvedCashierId,
+            })),
+          });
 
           // Khata balance adjustment if credit was used
           const khataPayment = s.payments.find((p: any) => p.method === "KHATA_UDHAAR");
@@ -144,6 +142,9 @@ export async function POST(req: NextRequest) {
               });
             }
           }
+        }, {
+          maxWait: 15000,
+          timeout: 30000,
         });
 
         syncedClientTxIds.push(s.clientTxId);
