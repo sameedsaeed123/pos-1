@@ -1,0 +1,244 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  OWNER
+  MANAGER
+  CASHIER
+  STOCK_KEEPER
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  JAZZCASH
+  EASYPAISA
+  RAAST_QR
+  KHATA_UDHAAR
+  BANK_TRANSFER
+}
+
+enum StockMovementType {
+  SALE
+  SALE_RETURN
+  PURCHASE_RECEIPT
+  SUPPLIER_RETURN
+  DAMAGE_EXPIRED
+  THEFT_LOSS
+  INTERNAL_USE
+  PHYSICAL_COUNT_ADJUSTMENT
+}
+
+enum FbrStatus {
+  NOT_APPLICABLE
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model Store {
+  id                  String   @id @default(cuid())
+  nameEn              String   @default("Kiryana Super Store")
+  nameUr              String   @default("کریانہ سپر اسٹور")
+  phone               String   @default("+92 300 1234567")
+  address             String   @default("Shop # 12, Main Bazar, Lahore")
+  fbrPosId            String?  @default("100101")
+  fbrAuthToken        String?
+  fbrEnabled          Boolean  @default(false)
+  taxRateBasisPoints  Int      @default(0) // e.g. 1800 = 18.00%
+  taxInclusive        Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model User {
+  id          String   @id @default(cuid())
+  name        String
+  email       String   @unique
+  pinHash     String   // Bcrypt hash of 4-6 digit cashier PIN
+  role        Role     @default(CASHIER)
+  active      Boolean  @default(true)
+  shifts      Shift[]
+  sales       Sale[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Product {
+  id                    String            @id @default(cuid())
+  nameEn                String
+  nameUr                String
+  sku                   String            @unique
+  primaryBarcode        String            @unique
+  category              String
+  brand                 String?
+  unit                  String            @default("piece") // piece, kg, gram, litre, carton
+  unitConversionFactor  Decimal           @default(1.0)
+  costPaisa             Int               // Integer paisa
+  salePricePaisa        Int               // Integer paisa
+  mrpPaisa              Int?              // Printed MRP on package
+  taxRatePercent        Decimal           @default(0.0)
+  reorderLevel          Decimal           @default(10.0)
+  locationShelf         String?
+  isActive              Boolean           @default(true)
+  barcodes              ProductBarcode[]
+  batches               ProductBatch[]
+  stockMovements        StockLedger[]
+  saleItems             SaleItem[]
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+}
+
+model ProductBarcode {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  barcode     String   @unique
+  unit        String   @default("piece")
+  multiplier  Decimal  @default(1.0) // e.g. Carton barcode = 12 pieces
+  createdAt   DateTime @default(now())
+}
+
+model ProductBatch {
+  id              String   @id @default(cuid())
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  batchNumber     String
+  expiryDate      DateTime?
+  costPaisa       Int
+  currentQuantity Decimal  @default(0.0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model StockLedger {
+  id            String            @id @default(cuid())
+  productId     String
+  product       Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  batchId       String?
+  quantityDelta Decimal           // Positive for stock in, negative for stock out
+  type          StockMovementType
+  referenceId   String?           // Sale ID, PO ID, or Adjustment ID
+  costPaisa     Int
+  reason        String?
+  createdAt     DateTime          @default(now())
+  createdById   String
+}
+
+model Customer {
+  id                  String        @id @default(cuid())
+  name                String
+  phone               String        @unique
+  address             String?
+  creditLimitPaisa    Int           @default(0) // Max allowed udhaar
+  currentBalancePaisa Int           @default(0) // Positive = customer owes store
+  loyaltyPoints       Int           @default(0)
+  sales               Sale[]
+  khataLedger         KhataLedger[]
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+}
+
+model KhataLedger {
+  id                String   @id @default(cuid())
+  customerId        String
+  customer          Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  saleId            String?
+  sale              Sale?    @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  amountPaisa       Int      // Positive = credit sale, Negative = payment received
+  balanceAfterPaisa Int
+  notes             String?
+  createdAt         DateTime @default(now())
+  createdById       String
+}
+
+model Shift {
+  id                  String    @id @default(cuid())
+  cashierId           String
+  cashier             User      @relation(fields: [cashierId], references: [id])
+  openedAt            DateTime  @default(now())
+  closedAt            DateTime?
+  openingFloatPaisa   Int       @default(0)
+  expectedCashPaisa   Int?
+  actualCashPaisa     Int?      // Blind cash count
+  variancePaisa       Int?
+  status              String    @default("OPEN") // OPEN, CLOSED
+  zReportData         Json?
+  sales               Sale[]
+  createdAt           DateTime  @default(now())
+}
+
+model Sale {
+  id                String        @id @default(cuid())
+  clientTxId        String        @unique // Client UUID for idempotent offline sync
+  receiptNumber     String        @unique
+  shiftId           String
+  shift             Shift         @relation(fields: [shiftId], references: [id])
+  cashierId         String
+  cashier           User          @relation(fields: [cashierId], references: [id])
+  customerId        String?
+  customer          Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  subtotalPaisa     Int
+  discountPaisa     Int           @default(0)
+  taxPaisa          Int           @default(0)
+  totalPaisa        Int
+  status            String        @default("COMPLETED") // COMPLETED, HELD, VOIDED, REFUNDED
+  fbrInvoiceNumber  String?
+  fbrQrCode         String?
+  fbrStatus         FbrStatus     @default(NOT_APPLICABLE)
+  createdAt         DateTime      @default(now())
+  items             SaleItem[]
+  payments          Payment[]
+  khataEntries      KhataLedger[]
+}
+
+model SaleItem {
+  id              String   @id @default(cuid())
+  saleId          String
+  sale            Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id])
+  batchId         String?
+  unit            String
+  quantity        Decimal
+  unitPricePaisa  Int
+  discountPaisa   Int      @default(0)
+  taxPaisa        Int      @default(0)
+  totalPaisa      Int
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  saleId          String
+  sale            Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  method          PaymentMethod
+  amountPaisa     Int
+  tenderPaisa     Int?
+  changePaisa     Int?
+  referenceNumber String?       // Raast/JazzCash/Card transaction reference
+  createdAt       DateTime      @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String
+  action      String   // PRICE_OVERRIDE, LINE_VOID, CASH_DRAWER_KICK, DISCOUNT_APPLIED
+  details     Json
+  createdAt   DateTime @default(now())
+}
+
+model PendingBarcode {
+  id          String   @id @default(cuid())
+  barcode     String   @unique
+  scannedBy   String
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  suggestedName String?
+  suggestedPricePaisa Int?
+  createdAt   DateTime @default(now())
+}
