@@ -29,7 +29,7 @@ interface PosContextType {
 }
 
 const DEFAULT_USER: ActiveUser = {
-  id: "default-cashier",
+  id: "cmwhrmkns0003hxdutajq144t",
   name: "Bilal Ahmad",
   role: "CASHIER",
   email: "cashier@kiryana.pk",
@@ -66,7 +66,21 @@ export function PosProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener("offline", handleOffline);
     setIsOnline(navigator.onLine);
 
-    // 3. First user gesture to unlock audio context
+    // 3. Sync live staff user from server
+    fetch("/api/users")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.users && data.users.length > 0) {
+          const cashier = data.users.find((u: any) => u.role === "CASHIER") || data.users[0];
+          setActiveUser((prev) => {
+            const found = data.users.find((u: any) => u.id === prev.id);
+            return found || cashier;
+          });
+        }
+      })
+      .catch(() => {});
+
+    // 4. First user gesture to unlock audio context
     const handleFirstGesture = () => {
       unlockAudioContext();
       window.removeEventListener("click", handleFirstGesture);
@@ -169,3 +183,4 @@ export function usePos() {
   }
   return context;
 }
+

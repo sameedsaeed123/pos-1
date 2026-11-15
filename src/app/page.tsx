@@ -208,13 +208,34 @@ export default function PosRegisterPage() {
       if (e.key === "F2") {
         e.preventDefault();
         e.stopPropagation();
-        setIsDiscountModalOpen(true);
+        if (cartItems.length > 0) setIsPaymentOpen(true);
+        return;
+      }
+      if (e.key === "F3") {
+        e.preventDefault();
+        e.stopPropagation();
+        const phone = prompt(
+          isUrdu
+            ? "گاہک کا نام یا موبائل نمبر درج کریں:"
+            : "Enter customer mobile number or name for Khata:"
+        );
+        if (phone) {
+          fetch(`/api/customers?q=${encodeURIComponent(phone)}`)
+            .then((r) => r.json())
+            .then((d) => {
+              if (d.customers && d.customers.length > 0) {
+                setSelectedCustomer(d.customers[0]);
+              } else {
+                alert("Customer not found. You can add them under the Khata tab.");
+              }
+            });
+        }
         return;
       }
       if (e.key === "F4") {
         e.preventDefault();
         e.stopPropagation();
-        handleHoldBill();
+        if (cartItems.length > 0) setIsDiscountModalOpen(true);
         return;
       }
       if (e.key === "F6") {
@@ -226,19 +247,33 @@ export default function PosRegisterPage() {
       if (e.key === "F7") {
         e.preventDefault();
         e.stopPropagation();
-        if (completedSale) setIsReceiptOpen(true);
+        if (completedSale) {
+          setIsReceiptOpen(true);
+        } else {
+          fetch("/api/sales")
+            .then((r) => r.json())
+            .then((d) => {
+              if (d.sales && d.sales.length > 0) {
+                setCompletedSale(d.sales[0]);
+                setIsReceiptOpen(true);
+              } else {
+                playScanErrorBuzz();
+              }
+            })
+            .catch(() => playScanErrorBuzz());
+        }
         return;
       }
       if (e.key === "F8") {
         e.preventDefault();
         e.stopPropagation();
-        if (cartItems.length > 0) setIsPaymentOpen(true);
+        handleHoldBill();
         return;
       }
       if (e.key === "F9") {
         e.preventDefault();
         e.stopPropagation();
-        if (cartItems.length > 0) setIsPaymentOpen(true);
+        setUnknownBarcode(`20${Math.floor(1000000000 + Math.random() * 9000000000)}`);
         return;
       }
       if (e.key === "F10") {
@@ -250,6 +285,7 @@ export default function PosRegisterPage() {
       if (e.key === "Escape") {
         setIsPaymentOpen(false);
         setIsDiscountModalOpen(false);
+        setIsReceiptOpen(false);
         setUnknownBarcode(null);
         setBufferedScanBarcode(null);
         return;
@@ -514,16 +550,16 @@ export default function PosRegisterPage() {
               </div>
               <button
                 onClick={() => setIsDiscountModalOpen(true)}
-                className="text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-1"
+                className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-1"
               >
                 <Tag className="w-3.5 h-3.5" />
-                <span>{isUrdu ? "بل ڈسکاؤنٹ [F2]" : "Apply Discount [F2]"}</span>
+                <span>{isUrdu ? "بل ڈسکاؤنٹ [F4]" : "Apply Discount [F4]"}</span>
               </button>
             </div>
 
             {/* Giant Grand Total Legible from 1 Metre */}
             <div className="py-2.5 flex items-baseline justify-between">
-              <span className="text-xs uppercase font-extrabold tracking-wider text-slate-700 dark:text-slate-300">
+              <span className="text-xs uppercase font-bold tracking-wider text-slate-600 dark:text-slate-400">
                 {isUrdu ? "کل قابل ادائیگی رقم:" : "GRAND TOTAL:"}
               </span>
               <div className="text-[52px] leading-none font-extrabold tabular-nums text-emerald-700 dark:text-emerald-400">
@@ -537,17 +573,17 @@ export default function PosRegisterPage() {
                 type="button"
                 onClick={handleHoldBill}
                 disabled={cartItems.length === 0}
-                className="py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1 disabled:opacity-40"
+                className="py-2.5 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-200 font-semibold text-xs flex items-center justify-center gap-1.5 disabled:opacity-40"
               >
                 <Pause className="w-4 h-4 text-amber-600" />
-                <span>Hold [F4]</span>
+                <span>Hold [F8]</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleVoidCurrentLine}
                 disabled={cartItems.length === 0}
-                className="py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-red-50 text-red-600 font-bold text-xs flex items-center justify-center gap-1 disabled:opacity-40"
+                className="py-2.5 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-red-50 text-red-600 font-semibold text-xs flex items-center justify-center gap-1.5 disabled:opacity-40"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Void [F10]</span>
@@ -555,21 +591,20 @@ export default function PosRegisterPage() {
 
               <button
                 type="button"
-                disabled={cartItems.length === 0}
-                onClick={() => setIsPaymentOpen(true)}
-                className="py-3 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold text-xs flex items-center justify-center gap-1 shadow-sm disabled:opacity-40"
+                onClick={() => handleRecallBill()}
+                className="py-2.5 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-200 font-semibold text-xs flex items-center justify-center gap-1.5"
               >
-                <span>Exact Cash [F9]</span>
+                <span>Recall [F6]</span>
               </button>
 
               <button
                 type="button"
                 disabled={cartItems.length === 0}
                 onClick={() => setIsPaymentOpen(true)}
-                className="py-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-md disabled:opacity-40"
+                className="py-2.5 rounded-md bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs disabled:opacity-40"
               >
-                <CreditCard className="w-5 h-5" />
-                <span>PAY [F8]</span>
+                <CreditCard className="w-4 h-4" />
+                <span>PAY [F2]</span>
               </button>
             </div>
           </div>

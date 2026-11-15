@@ -96,3 +96,4 @@ export class KiryanaPOSDatabase extends Dexie {
 }
 
 export const localDb = new KiryanaPOSDatabase();
+

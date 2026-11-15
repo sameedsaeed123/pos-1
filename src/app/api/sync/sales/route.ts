@@ -26,20 +26,46 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
+        // Resolve a valid user ID for foreign key constraint
+        let validUser = s.cashierId
+          ? await prisma.user.findUnique({ where: { id: s.cashierId } })
+          : null;
+        if (!validUser) {
+          validUser =
+            (await prisma.user.findFirst({ where: { role: "CASHIER" } })) ||
+            (await prisma.user.findFirst());
+        }
+        if (!validUser) {
+          failedClientTxIds.push({
+            clientTxId: s.clientTxId,
+            error: "No valid staff user found for sync",
+          });
+          continue;
+        }
+        const resolvedCashierId: string = validUser.id;
+
         // Process new offline sale in transaction
         await prisma.$transaction(async (tx) => {
           let resolvedShiftId = s.shiftId;
-          const shiftExists = await tx.shift.findUnique({ where: { id: resolvedShiftId } });
+          const shiftExists = resolvedShiftId
+            ? await tx.shift.findUnique({ where: { id: resolvedShiftId } })
+            : null;
           if (!shiftExists) {
             const activeShift = await tx.shift.findFirst({
               where: { status: "OPEN" },
               orderBy: { openedAt: "desc" },
             });
-            resolvedShiftId = activeShift ? activeShift.id : (
-              await tx.shift.create({
-                data: { cashierId: s.cashierId || "offline-sync", openingFloatPaisa: 0 },
-              })
-            ).id;
+            resolvedShiftId = activeShift
+              ? activeShift.id
+              : (
+                  await tx.shift.create({
+                    data: {
+                      cashierId: resolvedCashierId,
+                      openingFloatPaisa: 0,
+                      status: "OPEN",
+                    },
+                  })
+                ).id;
           }
 
           const createdSale = await tx.sale.create({
@@ -47,7 +73,7 @@ export async function POST(req: NextRequest) {
               clientTxId: s.clientTxId,
               receiptNumber: s.receiptNumber,
               shiftId: resolvedShiftId,
-              cashierId: s.cashierId || "offline-sync",
+              cashierId: resolvedCashierId,
               customerId: s.customerId || null,
               subtotalPaisa: s.subtotalPaisa,
               discountPaisa: s.discountPaisa || 0,
@@ -90,7 +116,7 @@ export async function POST(req: NextRequest) {
                 costPaisa: Math.round(Number(itm.unitPricePaisa) * 0.8),
                 reason: `Offline Synced Sale ${s.receiptNumber}`,
                 createdAt: new Date(s.createdAt),
-                createdById: s.cashierId || "offline-sync",
+                createdById: resolvedCashierId,
               },
             });
           }
@@ -113,7 +139,7 @@ export async function POST(req: NextRequest) {
                   balanceAfterPaisa: newBal,
                   notes: `Offline credit purchase ${s.receiptNumber}`,
                   createdAt: new Date(s.createdAt),
-                  createdById: s.cashierId || "offline-sync",
+                  createdById: resolvedCashierId,
                 },
               });
             }
@@ -138,3 +164,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

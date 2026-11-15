@@ -119,3 +119,4 @@ export const SCANNER_CONFIG = {
   minBarcodeLength: 3,
   maxBarcodeLength: 32,
 };
+

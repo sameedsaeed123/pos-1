@@ -80,3 +80,4 @@ export function calculateWeightedAverageCost(
   const totalValuePaisa = existingStock * existingCostPaisa + newQuantity * newCostPaisa;
   return Math.round(totalValuePaisa / totalQuantity);
 }
+

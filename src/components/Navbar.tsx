@@ -216,15 +216,15 @@ export function Navbar() {
                 <kbd className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 font-mono font-bold rounded border">F1 / /</kbd>
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-600 dark:text-slate-400">{isUrdu ? "بل ڈسکاؤنٹ شامل کریں" : "Add Bill Discount"}</span>
-                <kbd className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 font-mono font-bold rounded border">F2</kbd>
+                <span className="text-slate-600 dark:text-slate-400">{isUrdu ? "ادائیگی ونڈو کھولیں" : "Tender Payment (Pay)"}</span>
+                <kbd className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 font-mono font-bold rounded border text-emerald-700">F2</kbd>
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-slate-600 dark:text-slate-400">{isUrdu ? "کھاتہ گاہک منتخب کریں" : "Customer Khata Search"}</span>
                 <kbd className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 font-mono font-bold rounded border">F3</kbd>
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-600 dark:text-slate-400">{isUrdu ? "بل ہولڈ کریں" : "Hold Active Bill"}</span>
+                <span className="text-slate-600 dark:text-slate-400">{isUrdu ? "بل ڈسکاؤنٹ شامل کریں" : "Add Bill Discount"}</span>
                 <kbd className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 font-mono font-bold rounded border">F4</kbd>
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
@@ -236,12 +236,12 @@ export function Navbar() {
                 <kbd className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 font-mono font-bold rounded border">F7</kbd>
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-600 dark:text-slate-400">{isUrdu ? "ادائیگی ونڈو کھولیں" : "Open Payment Screen"}</span>
-                <kbd className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 font-mono font-bold rounded border text-emerald-700">F8</kbd>
+                <span className="text-slate-600 dark:text-slate-400">{isUrdu ? "بل ہولڈ کریں" : "Hold Active Bill"}</span>
+                <kbd className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 font-mono font-bold rounded border">F8</kbd>
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-600 dark:text-slate-400">{isUrdu ? "فوری نقد ادائیگی" : "Quick Cash Tender (Exact)"}</span>
-                <kbd className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 font-mono font-bold rounded border text-emerald-700">F9</kbd>
+                <span className="text-slate-600 dark:text-slate-400">{isUrdu ? "نیا پروڈکٹ شامل کریں" : "Quick Add Product"}</span>
+                <kbd className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 font-mono font-bold rounded border">F9</kbd>
               </div>
               <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-slate-600 dark:text-slate-400">{isUrdu ? "لائن آئٹم منسوخ کریں" : "Void Active Line Item"}</span>
@@ -265,3 +265,4 @@ export function Navbar() {
     </>
   );
 }
+

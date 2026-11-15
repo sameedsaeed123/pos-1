@@ -65,7 +65,12 @@ export async function POST(req: NextRequest) {
     if (clientTxId) {
       const existing = await prisma.sale.findUnique({
         where: { clientTxId },
-        include: { items: true, payments: true },
+        include: {
+          items: { include: { product: true } },
+          payments: true,
+          customer: true,
+          cashier: { select: { id: true, name: true } },
+        },
       });
       if (existing) {
         return NextResponse.json({ sale: existing, idempotent: true });
@@ -109,22 +114,41 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Resolve valid cashier ID from database to satisfy Foreign Key constraint
+    let validUser = cashierId
+      ? await prisma.user.findUnique({ where: { id: cashierId } })
+      : null;
+    if (!validUser) {
+      validUser =
+        (await prisma.user.findFirst({ where: { role: "CASHIER" } })) ||
+        (await prisma.user.findFirst());
+    }
+    const resolvedCashierId = validUser?.id;
+    if (!resolvedCashierId) {
+      return NextResponse.json({ error: "No staff user found in store database" }, { status: 400 });
+    }
+
     // Execute atomic sale transaction
     const sale = await prisma.$transaction(async (tx) => {
       // 1. Resolve active shift
       let resolvedShiftId = shiftId;
+      if (resolvedShiftId) {
+        const checkShift = await tx.shift.findUnique({ where: { id: resolvedShiftId } });
+        if (!checkShift) resolvedShiftId = undefined;
+      }
+
       if (!resolvedShiftId) {
         const activeShift = await tx.shift.findFirst({
-          where: { cashierId, status: "OPEN" },
+          where: { status: "OPEN" },
           orderBy: { openedAt: "desc" },
         });
         if (activeShift) {
           resolvedShiftId = activeShift.id;
         } else {
-          // Auto create active shift if none exists
+          // Auto create active shift with valid cashier ID
           const newShift = await tx.shift.create({
             data: {
-              cashierId: cashierId || "system",
+              cashierId: resolvedCashierId,
               openingFloatPaisa: 500000,
               status: "OPEN",
             },
@@ -139,7 +163,7 @@ export async function POST(req: NextRequest) {
           clientTxId: txId,
           receiptNumber,
           shiftId: resolvedShiftId,
-          cashierId: cashierId || "system",
+          cashierId: resolvedCashierId,
           customerId: customerId || null,
           subtotalPaisa,
           discountPaisa: Number(discountPaisa),
@@ -170,6 +194,14 @@ export async function POST(req: NextRequest) {
             })),
           },
         },
+        include: {
+          items: {
+            include: { product: true },
+          },
+          payments: true,
+          customer: true,
+          cashier: { select: { id: true, name: true } },
+        },
       });
 
       // 3. Write Stock Ledger Entries
@@ -182,7 +214,7 @@ export async function POST(req: NextRequest) {
             referenceId: createdSale.id,
             costPaisa: Math.round(Number(itm.unitPricePaisa) * 0.8),
             reason: `Checkout sale ${receiptNumber}`,
-            createdById: cashierId || "system",
+            createdById: resolvedCashierId,
           },
         });
       }
@@ -203,7 +235,7 @@ export async function POST(req: NextRequest) {
             amountPaisa: Number(khataPayment.amountPaisa),
             balanceAfterPaisa: newBalance,
             notes: `Credit purchase on receipt ${receiptNumber}`,
-            createdById: cashierId || "system",
+            createdById: resolvedCashierId,
           },
         });
       }
@@ -217,3 +249,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

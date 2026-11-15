@@ -103,3 +103,4 @@ The database comes pre-seeded with 4 store users, each equipped with a unique 4-
 | **Udhaar / Khata** | Customer balance, ledger, WhatsApp share | **VERIFIED** | Full master-detail customer ledger with repayment modal |
 | **Z-Report & Blind Close** | End of day shift reconciliation | **VERIFIED** | Shift management page with discrepancy calculation |
 | **Manager PIN Override** | Masked 4-digit PIN verification | **VERIFIED** | Reusable `ManagerPinDialog` with shake feedback |
+

@@ -10,11 +10,10 @@ import {
   Smartphone,
   BookOpen,
   QrCode,
-  CheckCircle,
+  Check,
   X,
-  AlertTriangle,
+  AlertCircle,
 } from "lucide-react";
-import confetti from "canvas-confetti";
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -39,7 +38,7 @@ export function PaymentModal({
   onClose,
   onPaymentComplete,
 }: PaymentModalProps) {
-  const { activeUser, language, isFbrEnabled, isOnline } = usePos();
+  const { activeUser, language, isFbrEnabled } = usePos();
   const [selectedMethod, setSelectedMethod] = useState<
     "CASH" | "CARD" | "JAZZCASH" | "EASYPAISA" | "RAAST_QR" | "KHATA_UDHAAR"
   >("CASH");
@@ -98,6 +97,8 @@ export function PaymentModal({
       totalPaisa,
       items: items.map((itm) => ({
         productId: itm.productId,
+        nameEn: itm.nameEn,
+        nameUr: itm.nameUr,
         unit: itm.unit,
         quantity: itm.quantity,
         unitPricePaisa: itm.unitPricePaisa,
@@ -126,10 +127,18 @@ export function PaymentModal({
       if (res.ok) {
         const data = await res.json();
         playSaleCompleteChime();
-        try {
-          confetti({ particleCount: 40, spread: 60, origin: { y: 0.8 } });
-        } catch {}
-        onPaymentComplete(data.sale);
+        const saleData = {
+          ...data.sale,
+          items:
+            data.sale?.items && data.sale.items.length > 0
+              ? data.sale.items
+              : payload.items,
+          payments:
+            data.sale?.payments && data.sale.payments.length > 0
+              ? data.sale.payments
+              : payload.payments,
+        };
+        onPaymentComplete(saleData);
       } else {
         const err = await res.json();
         playScanErrorBuzz();
@@ -160,7 +169,7 @@ export function PaymentModal({
         await localDb.outbox.add(offlineSale);
         playSaleCompleteChime();
         onPaymentComplete(offlineSale);
-      } catch (e: any) {
+      } catch {
         setErrorMsg("Failed to store offline transaction");
       }
     } finally {
@@ -169,35 +178,35 @@ export function PaymentModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-lg max-w-xl w-full p-5 shadow-xl border border-slate-200 dark:border-slate-800">
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
           <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
               {isUrdu ? "ادائیگی وصول کریں" : "Tender Payment"}
             </h3>
-            <p className="text-xs text-slate-500 font-medium">
+            <p className="text-xs text-slate-500">
               {isUrdu ? "طریقہ انتخاب کریں اور رسید جاری کریں" : "Select payment method and complete bill"}
             </p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
-            <X className="w-5 h-5" />
+          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 rounded">
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Bill Total Display */}
-        <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4 my-4 flex items-center justify-between">
-          <span className="text-xs font-bold uppercase text-emerald-800 dark:text-emerald-300">
-            Total Payable Amount:
+        {/* Amount Due Bar */}
+        <div className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md p-3.5 my-3.5 flex items-baseline justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+            Total Payable:
           </span>
-          <span className="text-3xl font-extrabold tabular-nums text-emerald-800 dark:text-emerald-300">
+          <span className="text-3xl font-extrabold tabular-nums text-emerald-700 dark:text-emerald-400">
             {formatRupees(totalPaisa)}
           </span>
         </div>
 
         {/* Payment Methods Grid */}
-        <div className="grid grid-cols-3 gap-2.5 mb-4">
+        <div className="grid grid-cols-3 gap-2 mb-3.5">
           {[
             { id: "CASH", label: "Cash (نقد)", icon: Banknote },
             { id: "JAZZCASH", label: "JazzCash", icon: Smartphone },
@@ -213,13 +222,13 @@ export function PaymentModal({
                 key={m.id}
                 type="button"
                 onClick={() => setSelectedMethod(m.id as any)}
-                className={`py-3 px-2 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1.5 border transition-all ${
+                className={`py-2.5 px-2 rounded-md text-xs font-semibold flex items-center justify-center gap-2 border transition-colors ${
                   isSelected
-                    ? "bg-emerald-700 text-white border-emerald-700 shadow-md scale-102"
-                    : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100"
+                    ? "bg-emerald-700 text-white border-emerald-700 font-bold shadow-xs"
+                    : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750"
                 }`}
               >
-                <Icon className="w-5 h-5" />
+                <Icon className="w-4 h-4" />
                 <span>{m.label}</span>
               </button>
             );
@@ -230,7 +239,7 @@ export function PaymentModal({
         {selectedMethod === "CASH" && (
           <div className="space-y-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Amount Tendered by Customer (Rs)
               </label>
               <input
@@ -240,14 +249,14 @@ export function PaymentModal({
                 autoFocus
                 value={tenderRupees}
                 onChange={(e) => setTenderRupees(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xl font-bold tabular-nums text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-600 outline-none"
+                className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xl font-bold tabular-nums text-slate-900 dark:text-white focus:border-emerald-600 outline-none"
               />
             </div>
 
             {/* PKR Denominations Buttons */}
             <div>
-              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
-                Quick PKR Notes:
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                Banknotes:
               </span>
               <div className="grid grid-cols-5 gap-1.5">
                 {PKR_NOTE_DENOMINATIONS.map((note) => (
@@ -255,7 +264,7 @@ export function PaymentModal({
                     key={note}
                     type="button"
                     onClick={() => handleQuickTenderNote(note)}
-                    className="py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-200"
+                    className="py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded text-xs font-semibold text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700"
                   >
                     Rs {note}
                   </button>
@@ -263,7 +272,7 @@ export function PaymentModal({
                 <button
                   type="button"
                   onClick={handleExactTender}
-                  className="py-2 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 rounded-lg text-xs font-extrabold col-span-2"
+                  className="py-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded text-xs font-bold col-span-2 border border-slate-300 dark:border-slate-600"
                 >
                   Exact (Rs {totalWholeRupees})
                 </button>
@@ -271,12 +280,12 @@ export function PaymentModal({
             </div>
 
             {/* Change Display */}
-            <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+            <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-md flex items-center justify-between border border-slate-200 dark:border-slate-700">
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Change to Return:
               </span>
               <span
-                className={`text-2xl font-extrabold tabular-nums ${
+                className={`text-xl font-bold tabular-nums ${
                   isUnderpaid ? "text-red-600" : "text-emerald-700 dark:text-emerald-400"
                 }`}
               >
@@ -288,13 +297,13 @@ export function PaymentModal({
 
         {/* Khata Udhaar Customer Check */}
         {selectedMethod === "KHATA_UDHAAR" && (
-          <div className="p-4 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl space-y-2">
-            <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-300 font-bold text-xs">
+          <div className="p-3.5 bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-md space-y-2">
+            <div className="flex items-center gap-1.5 text-indigo-900 dark:text-indigo-300 font-bold text-xs">
               <BookOpen className="w-4 h-4 text-indigo-700" />
               <span>Customer Khata Credit Sale</span>
             </div>
             {selectedCustomer ? (
-              <div className="text-xs text-indigo-800 dark:text-indigo-300 space-y-1">
+              <div className="text-xs text-indigo-800 dark:text-indigo-300 space-y-0.5">
                 <p>
                   Customer: <strong>{selectedCustomer.name}</strong> ({selectedCustomer.phone})
                 </p>
@@ -306,18 +315,21 @@ export function PaymentModal({
                 </p>
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-xs font-semibold">
-                <AlertTriangle className="w-4 h-4 shrink-0" />
-                <span>Please select a customer on the register screen before billing on Khata.</span>
+              <div className="flex items-center gap-1.5 text-amber-800 dark:text-amber-400 text-xs">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>Please select a customer before billing on Khata.</span>
               </div>
             )}
           </div>
         )}
 
-        {/* Digital Reference Input for JazzCash / Easypaisa / Raast */}
-        {(selectedMethod === "JAZZCASH" || selectedMethod === "EASYPAISA" || selectedMethod === "RAAST_QR" || selectedMethod === "CARD") && (
-          <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+        {/* Digital Reference Input */}
+        {(selectedMethod === "JAZZCASH" ||
+          selectedMethod === "EASYPAISA" ||
+          selectedMethod === "RAAST_QR" ||
+          selectedMethod === "CARD") && (
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
               Transaction ID / Approval Code (Optional)
             </label>
             <input
@@ -325,19 +337,21 @@ export function PaymentModal({
               value={transactionRef}
               onChange={(e) => setTransactionRef(e.target.value)}
               placeholder="e.g. TID-98247192"
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-600"
+              className="w-full px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white outline-none focus:border-emerald-600"
             />
           </div>
         )}
 
-        {errorMsg && <p className="mt-3 text-xs font-semibold text-red-600">{errorMsg}</p>}
+        {errorMsg && (
+          <p className="mt-2.5 text-xs font-medium text-red-600">{errorMsg}</p>
+        )}
 
         {/* Action Buttons */}
-        <div className="mt-6 flex gap-3">
+        <div className="mt-5 flex gap-2.5">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-3 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="flex-1 py-2.5 rounded-md border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
           >
             Back to Cart
           </button>
@@ -345,9 +359,9 @@ export function PaymentModal({
             type="button"
             disabled={isSubmitting || (selectedMethod === "CASH" && isUnderpaid)}
             onClick={handleCompleteSale}
-            className="flex-2 py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-sm font-extrabold flex items-center justify-center gap-2 shadow-md disabled:opacity-50"
+            className="flex-2 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-md text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-40"
           >
-            <CheckCircle className="w-5 h-5" />
+            <Check className="w-4 h-4" />
             <span>Complete Sale & Print [Enter]</span>
           </button>
         </div>

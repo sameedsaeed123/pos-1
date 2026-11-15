@@ -67,9 +67,20 @@ export async function POST(req: NextRequest) {
 
     if (action === "OPEN_SHIFT") {
       const { cashierId, openingFloatPaisa = 0 } = body;
+      let validUser = cashierId ? await prisma.user.findUnique({ where: { id: cashierId } }) : null;
+      if (!validUser) {
+        validUser =
+          (await prisma.user.findFirst({ where: { role: "CASHIER" } })) ||
+          (await prisma.user.findFirst());
+      }
+      const resolvedCashierId = validUser?.id;
+      if (!resolvedCashierId) {
+        return NextResponse.json({ error: "No staff user found in store database" }, { status: 400 });
+      }
+
       const shift = await prisma.shift.create({
         data: {
-          cashierId,
+          cashierId: resolvedCashierId,
           openingFloatPaisa: Number(openingFloatPaisa),
           status: "OPEN",
         },
@@ -153,3 +164,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
