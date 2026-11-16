@@ -24,13 +24,38 @@ export async function GET(req: NextRequest) {
     let todayCostPaisa = 0;
     let todayCashPaisa = 0;
 
+    const hourlyMap: Record<number, { hour: number; count: number; revenuePaisa: number }> = {};
+    for (let h = 8; h <= 23; h++) {
+      hourlyMap[h] = { hour: h, count: 0, revenuePaisa: 0 };
+    }
+
+    const paymentMethodsMap: Record<string, number> = {
+      CASH: 0,
+      CARD: 0,
+      JAZZCASH: 0,
+      EASYPAISA: 0,
+      RAAST_QR: 0,
+      KHATA_UDHAAR: 0,
+    };
+
+    const cashierMap: Record<string, { id: string; name: string; salesCount: number; revenuePaisa: number }> = {};
+
     for (const sale of todaySales) {
       todayRevenuePaisa += sale.totalPaisa;
+      const saleHour = new Date(sale.createdAt).getHours();
+      if (hourlyMap[saleHour]) {
+        hourlyMap[saleHour].count += 1;
+        hourlyMap[saleHour].revenuePaisa += sale.totalPaisa;
+      }
+
       for (const item of sale.items) {
         todayCostPaisa += Math.round(Number(item.quantity) * item.product.costPaisa);
       }
       for (const p of sale.payments) {
         if (p.method === "CASH") todayCashPaisa += p.amountPaisa;
+        if (paymentMethodsMap[p.method] !== undefined) {
+          paymentMethodsMap[p.method] += p.amountPaisa;
+        }
       }
     }
 
@@ -115,6 +140,8 @@ export async function GET(req: NextRequest) {
       },
       topItems,
       lowStockItems: lowStockItems.slice(0, 10),
+      hourlyDistribution: Object.values(hourlyMap),
+      paymentMethodsBreakdown: paymentMethodsMap,
     });
   } catch (error: any) {
     console.error("Reports GET error:", error);

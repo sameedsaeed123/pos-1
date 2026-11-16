@@ -10,10 +10,10 @@ The database comes pre-seeded with 4 store users, each equipped with a unique 4-
 
 | User | Role | PIN | Capabilities |
 | :--- | :--- | :--- | :--- |
-| **Tariq Mehmood** | OWNER | `1234` | Full access, blind close audit, 100% discount limit, product creation |
-| **Kamran Akmal** | MANAGER | `5678` | Void bills, approve unknown barcodes, price overrides, 25% discount limit |
-| **Bilal Ahmed** | CASHIER | `9999` | Fast scanning, cash tender, parked bills, 5% discount limit |
-| **Hamza Khan** | STOCK_KEEPER | `0000` | Inventory view, stock counts, receiving batches |
+| **Haji Muhammad Aslam** | OWNER | `1234` | Full access, blind close audit, 100% discount limit, product creation |
+| **Tariq Mehmood** | MANAGER | `5678` | Void bills, approve unknown barcodes, price overrides, 25% discount limit |
+| **Bilal Ahmad** | CASHIER | `9999` | Fast scanning, cash tender, parked bills, 5% discount limit |
+| **Rashid Ali** | STOCK_KEEPER | `0000` | Inventory view, stock counts, receiving batches |
 
 ---
 
@@ -32,16 +32,16 @@ The database comes pre-seeded with 4 store users, each equipped with a unique 4-
 * **Dual Layout**: 65% left side cart table, 35% right side quick item grid and category tabs.
 * **Scan Listener**: Global keyboard scan detector capturing inter-keystroke intervals under 35 milliseconds.
 * **Grand Total Ergonomics**: 52px high visibility grand total readable from over 1 meter away under bright fluorescent shop lights.
-* **Safe F-Key Shortcuts**:
+* **Safe Keyboard Shortcuts**:
   * `F1`: Focus search / barcode input
-  * `F2`: Select Cash payment
-  * `F3`: Select Digital / Split payment
-  * `F4`: Select Udhaar / Khata credit
-  * `F6`: Recall parked bills (F5 browser reload is avoided and blocked)
-  * `F7`: Reprint latest receipt (F12 devtools is avoided and blocked)
-  * `F8`: Park current bill
+  * `F2`: Tender Payment (Pay)
+  * `F3`: Customer Khata search
+  * `F4`: Add bill discount
+  * `F6`: Recall parked bills
+  * `F7`: Reprint latest receipt
+  * `F8`: Hold active bill
   * `F9`: Quick add unknown product
-  * `F10`: Void selected line item
+  * `F10`: Void active line item
 * **Bilingual Toggle**: Seamless switch between English and Urdu (Nastaliq styling) with complete RTL interface mirroring. Barcodes, phone numbers, and currency digits remain LTR.
 * **Loose Weighed Items**: Direct decimal quantity support (e.g., 2.5 kg Daal Chana) with automated price computation.
 * **Synthesized Audio Feedback**: Web Audio API generated 880 Hz tone for barcode scan success, 220 Hz dual buzz for scan error or missing barcode, and 1046 Hz pleasant chime on payment completion.
@@ -67,20 +67,36 @@ The database comes pre-seeded with 4 store users, each equipped with a unique 4-
 ### 3.5 Inventory & Stock Catalog (`/inventory`)
 * **Full Catalog**: 302 seeded products with search by English name, Urdu name, SKU, or barcode.
 * **Stock Badges**: Low stock indicators highlighting items below reorder threshold.
-* **Batch & Expiry**: Tracking of purchase batches and expiration dates for packaged dairy and food items.
+* **Direct Label Printing**: Direct link to print shelf edge talkers and barcode stickers.
 
 ### 3.6 Shifts & Cash Drawer (`/shifts`)
 * **Float Opening**: Open shift with verified cash float in drawer.
 * **Expected vs Actual Cash**: Real time tracking of cash sales, cash refunds, and cash collections.
+* **Petty Cash (Paid-In / Paid-Out)**: Record daily expenses (tea/refreshment, transport rickshaw, cleaning, safe drops) so the cashier is never falsely blamed for cash shortages.
+* **Cash Drawer Pop**: Trigger drawer kick command via ESC/POS pulse (`ESC p 0 25 250`).
 * **Blind Cash Close**: Enforces cashier to enter actual physical cash count without seeing theoretical total first, exposing discrepancies.
 * **Z-Report**: Complete shift summary with gross sales, net sales, category breakdown, tax collected, and variance ready for thermal printing.
 
-### 3.7 Reports & Executive Dashboard (`/reports`)
+### 3.7 Customer Returns & Exchanges (`/returns`)
+* Lookup past sales by scanning receipt barcode or entering receipt number.
+* Select individual items and specify return quantity.
+* Choose item condition: "Restock to Shelf" (writes `SALE_RETURN` ledger) or "Damaged / Discard" (writes `DAMAGE_EXPIRED` ledger).
+* Refund via cash out of drawer or credit adjustment on customer Khata account.
+* Manager PIN override for refunds above Rs 1,000.
+
+### 3.8 Barcode & Shelf Label Designer (`/labels`)
+* Batch label designer supporting 100mm x 38mm (shelf edge price talkers), 50mm x 30mm (standard stickers), and 40mm x 25mm (compact).
+* Render high contrast EAN-13 barcodes, bilingual store name, product title in English and Urdu, and prominent Pakistani Rupee price.
+* Continuous roll and sheet printing with zero margin clip.
+
+### 3.9 Reports & Executive Dashboard (`/reports`)
 * **KPI Metrics**: Total revenue, gross profit margin, today's cash in drawer, active khata debt.
+* **Hourly Sales Heatmap**: Bar chart tracking peak rush hours (morning prep and evening post-prayer rushes).
 * **Top Selling Items**: Revenue and volume ranking of top kiryana products.
 * **Low Stock Alerts**: Reorder warnings for fast moving commodities.
+* **CSV Export**: One click export to download sales records as a spreadsheet.
 
-### 3.8 Customer Facing Display (`/pos/customer-display`)
+### 3.10 Customer Facing Display (`/pos/customer-display`)
 * Opens in a second browser window or tablet oriented toward the customer.
 * Synchronizes instantly with the cashier register using the HTML5 `BroadcastChannel` API without server round trips.
 
@@ -91,16 +107,17 @@ The database comes pre-seeded with 4 store users, each equipped with a unique 4-
 | Feature | Research Requirement | Implementation Status | Verification Details |
 | :--- | :--- | :--- | :--- |
 | **Scan to Cart** | Instant barcode addition without mouse clicks | **VERIFIED** | Global scan listener with 35ms timing check, barcode normalizer |
-| **Safe Keyboard Shortcuts** | No F5 or F12 conflicts, safe F-keys | **VERIFIED** | F1-F4, F6, F7, F8, F9, F10 with strict `e.preventDefault()` |
+| **Safe Keyboard Shortcuts** | No F5 or F12 conflicts, safe F-keys | **VERIFIED** | F1-F4, F6-F10 with strict `e.preventDefault()` |
 | **Integer Paisa Math** | Zero float rounding errors | **VERIFIED** | Paisa integers used across DB, API, and UI |
 | **Bilingual RTL** | Urdu and English with proper digit handling | **VERIFIED** | RTL layout toggle, Western digits preserved for prices and barcodes |
 | **WCAG AA Contrast** | Minimum 4.5:1 contrast for shop lighting | **VERIFIED** | #15803D Green (4.6:1), #C2410C Warning (4.7:1), #4338CA Indigo (6.3:1) |
 | **Offline First Engine** | IndexedDB cache and outbox sync | **VERIFIED** | Dexie.js stores products and outbox, idempotent sync via `clientTxId` |
-| **Loose Weighed Items** | Decimal kg, g, and litre pricing | **VERIFIED** | Decimal quantities supported on cart and scale barcodes |
-| **Scale Barcode Parser** | Embedded price/weight barcodes (20-29 prefix) | **VERIFIED** | Parsed in `src/lib/barcode.ts` with test coverage |
+| **Returns & Refunds** | Receipt scanning, restock vs damage, Khata credit | **VERIFIED** | `/returns` route with atomic stock return and ledger |
+| **Barcode & Shelf Labels** | Thermal label designer in multiple sizes | **VERIFIED** | `/labels` with 100x38, 50x30, 40x25mm batch printing |
+| **Petty Cash Operations** | Paid-in / paid-out expense tracking | **VERIFIED** | Integrated on `/shifts` with automatic expected cash adjustment |
+| **Hardware ESC/POS** | Raw printer commands & drawer kick pulse | **VERIFIED** | `src/lib/escpos.ts` with WebUSB / WebSerial support |
+| **Hourly Sales Heatmap** | Peak rush hours analysis | **VERIFIED** | Real-time hourly distribution bar chart on `/reports` |
 | **PKR Tender Shortcuts** | Note buttons including Rs 10 and Rs 20 | **VERIFIED** | Tender shortcuts for Rs 10, 20, 50, 100, 500, 1000, 5000 |
-| **Thermal Receipts** | 80mm and 58mm layout with FBR QR | **VERIFIED** | Component with canvas QR and standard print CSS |
-| **Udhaar / Khata** | Customer balance, ledger, WhatsApp share | **VERIFIED** | Full master-detail customer ledger with repayment modal |
-| **Z-Report & Blind Close** | End of day shift reconciliation | **VERIFIED** | Shift management page with discrepancy calculation |
-| **Manager PIN Override** | Masked 4-digit PIN verification | **VERIFIED** | Reusable `ManagerPinDialog` with shake feedback |
-
+| **Thermal Receipts** | 80mm and 58mm layout with FBR QR | **VERIFIED** | Monochrome layout with canvas QR and WhatsApp sharing |
+| **Udhaar / Khata** | Customer balance, ledger, WhatsApp reminder | **VERIFIED** | Master-detail customer ledger with repayment modal |
+| **Z-Report & Blind Close** | End of day shift reconciliation | **VERIFIED** | Blind count dialog with variance calculation and printable slip |

@@ -41,7 +41,36 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const expectedCashInDrawerPaisa = activeShift.openingFloatPaisa + cashSalesPaisa;
+    // Fetch petty cash transactions for this shift
+    const pettyCashLogs = await prisma.auditLog.findMany({
+      where: {
+        action: { in: ["PAID_IN", "PAID_OUT"] },
+        createdAt: { gte: activeShift.openedAt },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    let paidInPaisa = 0;
+    let paidOutPaisa = 0;
+    const shiftPettyLogs: any[] = [];
+
+    for (const log of pettyCashLogs) {
+      const d = log.details as any;
+      if (d?.shiftId === activeShift.id) {
+        if (log.action === "PAID_IN") paidInPaisa += Number(d.amountPaisa || 0);
+        if (log.action === "PAID_OUT") paidOutPaisa += Number(d.amountPaisa || 0);
+        shiftPettyLogs.push({
+          id: log.id,
+          action: log.action,
+          amountPaisa: d.amountPaisa,
+          reason: d.reason,
+          createdAt: log.createdAt,
+        });
+      }
+    }
+
+    const expectedCashInDrawerPaisa =
+      activeShift.openingFloatPaisa + cashSalesPaisa + paidInPaisa - paidOutPaisa;
 
     return NextResponse.json({
       activeShift: {
@@ -50,6 +79,9 @@ export async function GET(req: NextRequest) {
         cardSalesPaisa,
         mobileSalesPaisa,
         khataSalesPaisa,
+        paidInPaisa,
+        paidOutPaisa,
+        pettyCashLogs: shiftPettyLogs,
         totalSalesPaisa: cashSalesPaisa + cardSalesPaisa + mobileSalesPaisa + khataSalesPaisa,
         expectedCashInDrawerPaisa,
       },
@@ -87,6 +119,34 @@ export async function POST(req: NextRequest) {
         include: { cashier: true },
       });
       return NextResponse.json({ shift, success: true });
+    }
+
+    if (action === "PETTY_CASH") {
+      const { shiftId, type, amountPaisa, reason, cashierId } = body;
+      if (!shiftId || !amountPaisa || !reason) {
+        return NextResponse.json({ error: "Shift ID, amount, and reason are required" }, { status: 400 });
+      }
+
+      let validUser = cashierId ? await prisma.user.findUnique({ where: { id: cashierId } }) : null;
+      if (!validUser) {
+        validUser = (await prisma.user.findFirst()) || null;
+      }
+      const resolvedUserId = validUser?.id || "system";
+
+      const log = await prisma.auditLog.create({
+        data: {
+          userId: resolvedUserId,
+          action: type === "PAID_IN" ? "PAID_IN" : "PAID_OUT",
+          details: {
+            shiftId,
+            amountPaisa: Number(amountPaisa),
+            reason,
+            cashierId: resolvedUserId,
+          },
+        },
+      });
+
+      return NextResponse.json({ success: true, log });
     }
 
     if (action === "CLOSE_SHIFT") {

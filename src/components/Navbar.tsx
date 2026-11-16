@@ -18,6 +18,7 @@ import {
   UserCheck,
   Moon,
   Sun,
+  RotateCcw,
 } from "lucide-react";
 import { ManagerPinDialog } from "./ManagerPinDialog";
 
@@ -48,6 +49,7 @@ export function Navbar() {
     { href: "/inventory", labelEn: "Inventory", labelUr: "اسٹاک و مال", icon: Package },
     { href: "/khata", labelEn: "Khata (Udhaar)", labelUr: "کھاتہ و ادھار", icon: BookOpen },
     { href: "/shifts", labelEn: "Shifts & Cash", labelUr: "شفٹ و کیش ڈراور", icon: Clock },
+    { href: "/returns", labelEn: "Returns", labelUr: "واپسی مال", icon: RotateCcw },
     { href: "/reports", labelEn: "Reports", labelUr: "رپورٹس و منافع", icon: BarChart3 },
   ];
 

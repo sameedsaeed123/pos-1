@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { usePos } from "@/context/PosContext";
 import { formatRupees, rupeesToPaisa } from "@/lib/money";
+import Link from "next/link";
 import {
   Package,
   Plus,
@@ -13,6 +14,7 @@ import {
   ArrowUpDown,
   History,
   CheckCircle,
+  Tag,
 } from "lucide-react";
 
 export default function InventoryPage() {
@@ -114,13 +116,13 @@ export default function InventoryPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => alert("CSV Importer: Upload CSV with columns: name, barcode, price, cost, category")}
+            <Link
+              href="/labels"
               className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 shadow-xs hover:bg-slate-50"
             >
-              <Upload className="w-4 h-4" />
-              <span>Import CSV</span>
-            </button>
+              <Tag className="w-4 h-4 text-emerald-700" />
+              <span>{isUrdu ? "بارکوڈ لیبل پرنٹ کریں" : "Print Labels"}</span>
+            </Link>
 
             <button
               onClick={() => setIsAddModalOpen(true)}
